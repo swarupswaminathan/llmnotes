@@ -1,4 +1,5 @@
 # Medication Label Standardization
+Authored by Janet Kang, University of Miami Miller School of Medicine
 
 This repository standardizes free-text topical and oral glaucoma medication labels into a consistent format for downstream review and analysis.
 
@@ -13,7 +14,7 @@ It includes:
 ## Repository structure
 
 ```text
-project_root/
+med_standardization/
 ├── src/
 │   ├── current_med_standardization.py
 │   ├── change_med_standardization.py

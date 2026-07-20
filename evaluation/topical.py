@@ -1,6 +1,6 @@
 """Topical (bilateral OD/OS) medication evaluation against adjudicated gold.
 
-Drops rows with missing labels flagged for manual review, extracts per-eye
+Drops rows with missing labels flagged for failed_match, extracts per-eye
 drugs / frequencies / change phrases, then prints agreement scenarios.
 """
 

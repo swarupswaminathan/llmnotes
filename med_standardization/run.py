@@ -90,7 +90,7 @@ from src.change_med_standardization import standardize_medication_change_list
 # ---------------------------------------------------------------------------
 # Output basename: grading_results_{acronym}_standardized.xlsx
 # Standardized AI_Diagnosis columns use the same suffixes the evaluation
-# FILE_COLUMN_MAP expects (…_output, …_manual_review_required, …_parsed_items).
+# FILE_COLUMN_MAP expects (…_output, …_failed_match, …_parsed_items).
 
 @dataclass(frozen=True)
 class GradingCvarSpec:
@@ -306,35 +306,6 @@ def default_grading_output_path(input_path: Path, acronym: str) -> Path:
     return input_path.parent / f"grading_results_{acronym}_standardized.xlsx"
 
 
-def rename_failed_match_to_manual_review(df: pd.DataFrame) -> pd.DataFrame:
-    """Map run.py ``*_failed_match`` → evaluation ``*_manual_review_required``.
-
-    ``evaluation/column_map.py`` expects ``manual_review_required`` as the
-    checker column name. Coerce bools to 0/1 so ``checker == 1`` filters work.
-    """
-    rename: dict[str, str] = {}
-    for col in df.columns:
-        if col.endswith("_failed_match"):
-            rename[col] = col[: -len("_failed_match")] + "_manual_review_required"
-    if not rename:
-        return df
-
-    out = df.rename(columns=rename)
-
-    def _as_checker(val: Any) -> Any:
-        if val is None or (isinstance(val, float) and pd.isna(val)):
-            return None
-        if isinstance(val, bool):
-            return int(val)
-        if isinstance(val, (int, float)) and val in (0, 1, 0.0, 1.0):
-            return int(val)
-        return val
-
-    for new_col in rename.values():
-        out[new_col] = out[new_col].map(_as_checker)
-    return out
-
-
 def run_grading_results_standardization(
     input_path: Path,
     *,
@@ -384,8 +355,6 @@ def run_grading_results_standardization(
             label_type=spec.label_type,
             standardizer=standardizer,
         )
-
-    df = rename_failed_match_to_manual_review(df)
 
     logger.info("Writing output workbook: %s", output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)

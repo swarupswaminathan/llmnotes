@@ -1,6 +1,6 @@
 """Oral (note-level) medication evaluation against adjudicated gold.
 
-Drops rows with missing labels flagged for manual review, extracts drugs /
+Drops rows with missing labels flagged for failed_match, extracts drugs /
 frequencies / change terms, then prints agreement scenarios (no AUPRC).
 """
 

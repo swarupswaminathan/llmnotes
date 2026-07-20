@@ -8,7 +8,15 @@ from models.base import BaseAdapter
 
 
 class AnthropicAdapter(BaseAdapter):
-    """Claude messages.create path (Cells 21–23)."""
+    """Claude messages.create path with optional adaptive thinking.
+
+    ``reasoning_effort="none"`` disables thinking:
+      - temperature 0.4 (else 1.0)
+      - thinking ``{"type": "disabled"}`` (else ``"adaptive"``)
+      - ``output_config.effort`` forced to ``"high"`` — ``"none"`` is never sent
+    Params log still records the requested reasoning_effort and is_thinking.
+    With thinking off, explanation falls back to the JSON body's ``reasoning`` field.
+    """
 
     def generate(
         self,
@@ -25,37 +33,39 @@ class AnthropicAdapter(BaseAdapter):
         reasoning_effort = self.ctx.reasoning_effort
         tok_num = self.ctx.tok_num
         is_thinking = reasoning_effort != "none"
+        # Effort remains "high" if is_thinking = False
+        effort_level = reasoning_effort if is_thinking else "high"
+        temperature = 1.0 if is_thinking else 0.4
+        thinking_param = "adaptive" if is_thinking else "disabled"
 
         self._maybe_log_params(
             {
                 "model": self.ctx.model_name,
                 "reasoning_effort": reasoning_effort,
                 "is_thinking": is_thinking,
-                "thinking_param": "adaptive" if is_thinking else "disabled",
-                "effort_level": reasoning_effort if is_thinking else "high",
-                "temperature": 1.0 if is_thinking else 0.4,
+                "thinking_param": thinking_param,
+                "effort_level": effort_level,
+                "temperature": temperature,
                 "max_tokens": tok_num,
                 "prompt_count": prompt_count,
                 "schema_properties": schema_properties,
                 "schema_required": schema_required,
-                "stage": stage,
             }
         )
 
-        # Notebook Claude cells only require primary label keys (OD/OS or Oral).
         label_required = [k for k in schema_required if k in ("OD", "OS", "Oral")]
         if not label_required:
             label_required = list(schema_required)
 
         completion = self.client.messages.create(
             model=self.ctx.model_name,
-            temperature=1.0 if is_thinking else 0.4,
+            temperature=temperature,
             max_tokens=tok_num,
             system=cfg,
-            thinking={"type": "adaptive"} if is_thinking else {"type": "disabled"},
+            thinking={"type": thinking_param},
             messages=[{"role": "user", "content": note}],
             output_config={
-                "effort": reasoning_effort if is_thinking else "high",
+                "effort": effort_level,
                 "format": {
                     "type": "json_schema",
                     "schema": {
@@ -73,13 +83,14 @@ class AnthropicAdapter(BaseAdapter):
         thinking_response = next(
             (b.thinking for b in completion.content if b.type == "thinking"), None
         )
-
+        inc_det = completion.stop_reason == "max_tokens"
         explanation = None
-        if completion.stop_reason == "max_tokens":
+        if inc_det:
             print(f"Incomplete — max_tokens hit. Response: {text_response}")
             max_count += 1
             self.ctx.global_max_count += 1
         else:
+            # Thinking off → thinking_response is usually None; use JSON "reasoning".
             if thinking_response:
                 explanation = thinking_response
             elif text_response:
@@ -96,6 +107,10 @@ class AnthropicAdapter(BaseAdapter):
                 f"Text Response: {text_response}, Thinking Response: {thinking_response}, "
                 f"Reasoning effort: {reasoning_effort}, Thinking: {is_thinking}"
             )
+            with open(self.ctx.logger_path, "a") as f:
+                f.write(
+                    f"max_token_hit: {inc_det} {max_count} times, Text Response: {response}\n"
+                )
 
         return {
             "response": response,

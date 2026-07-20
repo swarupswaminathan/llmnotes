@@ -1,8 +1,4 @@
-'''
-Standardize free-text medication change lists into a consistent format.
-Test run this script in med_standardization directory with: 
-python -m src.change_med_standardization
-'''
+"""Standardize free-text medication change lists into a consistent format."""
 
 import json
 from dataclasses import asdict
@@ -13,6 +9,7 @@ from .utils import sort_key_change
 
 
 def standardize_medication_change_list(med_list: str, med_list_type: str) -> Dict[str, Any]:
+    """Normalize a medication-change string (``med_list_type``: OD / OS / oral)."""
     parsed = parse_medication_change_list(med_list, med_list_type)
 
     if len(parsed) == 1 and parsed[0].drug_name in {"None", "Unspecified"}:

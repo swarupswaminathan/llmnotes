@@ -30,15 +30,15 @@ API_VERSION = os.getenv("API_VERSION", "2025-03-01-preview")
 SERVER_ERROR_CODES = {424, 429, 500, 502, 503, 504}
 
 REPO_ROOT = Path(__file__).resolve().parent
-RESULTS_ROOT = Path(os.getenv("RESULTS_ROOT", str(REPO_ROOT / "final_results")))
+RESULTS_ROOT = Path(os.getenv("RESULTS_ROOT", str(REPO_ROOT / "results")))
 
 DEFAULT_GRADING_XLSX = os.getenv(
     "GRADING_XLSX",
-    str(REPO_ROOT / "labels" / "final_sampled_df - Gustavo.xlsx"),
+    str(REPO_ROOT / "data" / "final_sampled_df - Gustavo.xlsx"),
 )
 DEFAULT_FEWSHOT_XLSX = os.getenv(
     "FEWSHOT_XLSX",
-    str(REPO_ROOT / "labels" / "notes_fewshot_final_complete.xlsx"),
+    str(REPO_ROOT / "data" / "notes_fewshot_final_complete.xlsx"),
 )
 
 SUPPORTED_CVARS = (
@@ -76,7 +76,7 @@ def _env(name: str, default: str | None = None) -> str | None:
 
 
 def _build_model_registry() -> dict[str, ModelSpec]:
-    """Lift of notebook Cell 3 model_config; keys/endpoints from env."""
+    """Build model registry from env vars."""
     specs = [
         ModelSpec(
             alias="gpt",
@@ -97,7 +97,9 @@ def _build_model_registry() -> dict[str, ModelSpec]:
             adapter="anthropic",
             model_name="claude-opus-4-6",
             deployment_name="claude-opus-4-6",
-            reasoning_effort=("low", "medium", "high", "max"),
+            # "none" = thinking disabled; output_config.effort still sent as "high"
+            # (see AnthropicAdapter). Allowed API effort values when thinking: low/medium/high/max.
+            reasoning_effort=("none", "low", "medium", "high", "max"),
             api_key_env="AZURE_API_KEY",
             endpoint_env="AZURE_ANTHROPIC_ENDPOINT",
             response_format_style="json_schema",
@@ -140,6 +142,7 @@ def _build_model_registry() -> dict[str, ModelSpec]:
             api_key_env="QWEN_API_KEY",
             endpoint_env="QWEN_ENDPOINT",
             response_format_style="json_object",
+            # Note: Qwen overthinks greatly and will result in staggering max_token_count failures if reasoning_effort is passed. So we disable it.
             pass_reasoning_effort=False,
             token_param="max_completion_tokens",
         ),

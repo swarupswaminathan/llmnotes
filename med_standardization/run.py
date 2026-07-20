@@ -58,6 +58,14 @@ python run.py \
     --change-od-col "Change in Topical Treatment OD" \
     --change-os-col "Change in Topical Treatment OS" \
     --change-oral-col "Change in Oral Meds"
+
+# Grading-results convenience mode (inference → evaluation bridge):
+# Input:  .../grading_results_{cvar}.xlsx
+# Output: .../grading_results_{acronym}_standardized.xlsx  (same directory)
+# Column names match evaluation/column_map.py (AI_Diagnosis__standardized_*).
+python run.py \
+    --grading-results \
+    --input results/oral_meds_staged/.../grading_results_oral_meds_staged.xlsx
 """
 
 from __future__ import annotations
@@ -65,6 +73,8 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
@@ -73,8 +83,44 @@ import pandas as pd
 from src.combined_med_standardization import standardize_medication_label
 from src.current_med_standardization import standardize_medication_list
 from src.change_med_standardization import standardize_medication_change_list
-from src.utils import sort_key_change
 
+
+# ---------------------------------------------------------------------------
+# Grading-results mode — aligned with evaluation/column_map.py
+# ---------------------------------------------------------------------------
+# Output basename: grading_results_{acronym}_standardized.xlsx
+# Standardized AI_Diagnosis columns use the same suffixes the evaluation
+# FILE_COLUMN_MAP expects (…_output, …_manual_review_required, …_parsed_items).
+
+@dataclass(frozen=True)
+class GradingCvarSpec:
+    cvar: str
+    acronym: str
+    json_kind: str  # "topical" | "oral"
+    label_type: str  # "current" | "change"
+
+
+# Keep in sync with evaluation.column_map.CVAR_TO_ACRONYM / TOPICAL/CHANGE sets.
+GRADING_CVAR_SPECS: dict[str, GradingCvarSpec] = {
+    "top_meds_staged": GradingCvarSpec(
+        "top_meds_staged", "tms", "topical", "current"
+    ),
+    "top_meds_change_staged": GradingCvarSpec(
+        "top_meds_change_staged", "tmcs", "topical", "change"
+    ),
+    "oral_meds_staged": GradingCvarSpec(
+        "oral_meds_staged", "oms", "oral", "current"
+    ),
+    "oral_meds_change_staged": GradingCvarSpec(
+        "oral_meds_change_staged", "omcs", "oral", "change"
+    ),
+}
+
+GRADING_ACRONYM_TO_CVAR: dict[str, str] = {
+    spec.acronym: cvar for cvar, spec in GRADING_CVAR_SPECS.items()
+}
+
+GRADING_AI_DIAGNOSIS_COL = "AI_Diagnosis"
 
 # --------------------------------------------------
 # Logging setup
@@ -123,11 +169,50 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument("--input", required=True, help="Path to input Excel file.")
-    parser.add_argument("--output", required=True, help="Path to output Excel file.")
+    parser.add_argument(
+        "--output",
+        default=None,
+        help=(
+            "Path to output Excel file. Required for the general column mode; "
+            "optional with --grading-results (defaults to "
+            "grading_results_{acronym}_standardized.xlsx beside the input)."
+        ),
+    )
     parser.add_argument(
         "--sheet-name",
         default=0,
         help="Sheet name or index to read from the input workbook. Default: 0",
+    )
+
+    parser.add_argument(
+        "--grading-results",
+        action="store_true",
+        help=(
+            "Convenience mode for inference outputs: take "
+            "grading_results_{cvar}.xlsx (or grading_results_{acronym}.xlsx), "
+            "standardize the AI_Diagnosis JSON column for that cvar, and write "
+            "grading_results_{acronym}_standardized.xlsx in the same directory. "
+            "Column names match evaluation/column_map.py. "
+            "Does not require --*-col arguments."
+        ),
+    )
+    parser.add_argument(
+        "--cvar",
+        default=None,
+        choices=sorted(GRADING_CVAR_SPECS),
+        help=(
+            "Optional cvar override for --grading-results "
+            "(otherwise inferred from the input filename)."
+        ),
+    )
+    parser.add_argument(
+        "--acronym",
+        default=None,
+        choices=sorted(GRADING_ACRONYM_TO_CVAR),
+        help=(
+            "Optional acronym override for --grading-results "
+            "(tms/tmcs/oms/omcs; otherwise inferred from the input filename)."
+        ),
     )
 
     # plain text columns
@@ -154,6 +239,159 @@ def parse_args() -> argparse.Namespace:
     )
 
     return parser.parse_args()
+
+
+def resolve_grading_spec(
+    input_path: Path,
+    *,
+    cvar: str | None = None,
+    acronym: str | None = None,
+) -> GradingCvarSpec:
+    """Resolve cvar/acronym for grading-results mode from CLI and/or filename.
+
+    Accepts basenames:
+      grading_results_{cvar}.xlsx
+      grading_results_{acronym}.xlsx
+    Rejects already-standardized names (*_standardized.xlsx).
+    """
+    basename = input_path.name
+    match = re.fullmatch(
+        r"grading_results_(.+)\.xlsx", basename, flags=re.IGNORECASE
+    )
+    if not match:
+        raise ValueError(
+            f"Expected input basename grading_results_<cvar|acronym>.xlsx, "
+            f"got {basename!r}"
+        )
+    token = match.group(1)
+    if token.lower().endswith("_standardized") or token.lower().endswith(
+        "standardized"
+    ):
+        raise ValueError(
+            f"Input looks already standardized ({basename!r}). "
+            "Pass the raw grading_results_{cvar}.xlsx from inference."
+        )
+
+    if cvar and acronym:
+        if GRADING_CVAR_SPECS[cvar].acronym != acronym:
+            raise ValueError(
+                f"--cvar {cvar!r} and --acronym {acronym!r} disagree "
+                f"(expected acronym {GRADING_CVAR_SPECS[cvar].acronym!r})"
+            )
+    elif cvar:
+        acronym = GRADING_CVAR_SPECS[cvar].acronym
+    elif acronym:
+        cvar = GRADING_ACRONYM_TO_CVAR[acronym]
+    else:
+        if token in GRADING_CVAR_SPECS:
+            cvar = token
+            acronym = GRADING_CVAR_SPECS[cvar].acronym
+        elif token in GRADING_ACRONYM_TO_CVAR:
+            acronym = token
+            cvar = GRADING_ACRONYM_TO_CVAR[acronym]
+        else:
+            raise ValueError(
+                f"Cannot infer cvar/acronym from {basename!r}. "
+                f"Expected cvar in {sorted(GRADING_CVAR_SPECS)} or "
+                f"acronym in {sorted(GRADING_ACRONYM_TO_CVAR)}, "
+                "or pass --cvar / --acronym."
+            )
+
+    assert cvar is not None
+    return GRADING_CVAR_SPECS[cvar]
+
+
+def default_grading_output_path(input_path: Path, acronym: str) -> Path:
+    """Same directory as input: grading_results_{acronym}_standardized.xlsx."""
+    return input_path.parent / f"grading_results_{acronym}_standardized.xlsx"
+
+
+def rename_failed_match_to_manual_review(df: pd.DataFrame) -> pd.DataFrame:
+    """Map run.py ``*_failed_match`` → evaluation ``*_manual_review_required``.
+
+    ``evaluation/column_map.py`` expects ``manual_review_required`` as the
+    checker column name. Coerce bools to 0/1 so ``checker == 1`` filters work.
+    """
+    rename: dict[str, str] = {}
+    for col in df.columns:
+        if col.endswith("_failed_match"):
+            rename[col] = col[: -len("_failed_match")] + "_manual_review_required"
+    if not rename:
+        return df
+
+    out = df.rename(columns=rename)
+
+    def _as_checker(val: Any) -> Any:
+        if val is None or (isinstance(val, float) and pd.isna(val)):
+            return None
+        if isinstance(val, bool):
+            return int(val)
+        if isinstance(val, (int, float)) and val in (0, 1, 0.0, 1.0):
+            return int(val)
+        return val
+
+    for new_col in rename.values():
+        out[new_col] = out[new_col].map(_as_checker)
+    return out
+
+
+def run_grading_results_standardization(
+    input_path: Path,
+    *,
+    output_path: Path | None = None,
+    sheet_name: Any = 0,
+    cvar: str | None = None,
+    acronym: str | None = None,
+    use_combined_wrapper: bool = False,
+) -> Path:
+    """Standardize inference ``grading_results_{cvar}.xlsx`` for evaluation.
+
+    Only the ``AI_Diagnosis`` JSON prediction column is standardized (gold
+    target columns are merged later by evaluate.py from the adjudicated file).
+    """
+    spec = resolve_grading_spec(input_path, cvar=cvar, acronym=acronym)
+    if output_path is None:
+        output_path = default_grading_output_path(input_path, spec.acronym)
+
+    logger.info(
+        "Grading-results mode: cvar=%s acronym=%s json_kind=%s label_type=%s",
+        spec.cvar,
+        spec.acronym,
+        spec.json_kind,
+        spec.label_type,
+    )
+    logger.info("Reading input workbook: %s", input_path)
+    df = pd.read_excel(input_path, sheet_name=sheet_name)
+
+    if GRADING_AI_DIAGNOSIS_COL not in df.columns:
+        raise ValueError(
+            f"Grading-results input must contain column "
+            f"{GRADING_AI_DIAGNOSIS_COL!r}; found {list(df.columns)}"
+        )
+
+    standardizer = get_standardizer(use_combined_wrapper)
+    if spec.json_kind == "topical":
+        df = standardize_json_topical_column(
+            df=df,
+            input_col=GRADING_AI_DIAGNOSIS_COL,
+            label_type=spec.label_type,
+            standardizer=standardizer,
+        )
+    else:
+        df = standardize_json_oral_column(
+            df=df,
+            input_col=GRADING_AI_DIAGNOSIS_COL,
+            label_type=spec.label_type,
+            standardizer=standardizer,
+        )
+
+    df = rename_failed_match_to_manual_review(df)
+
+    logger.info("Writing output workbook: %s", output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_excel(output_path, index=False)
+    logger.info("Done.")
+    return output_path
 
 
 def normalize_cell_value(value: Any) -> Optional[str]:
@@ -614,7 +852,8 @@ def validate_requested_columns(args: argparse.Namespace) -> tuple[Dict[str, list
     if not plain_selected and not json_selected:
         raise ValueError(
             "You must provide at least one medication column argument, such as "
-            "--current-oral-col, --change-od-col, or --current-oral-col-json."
+            "--current-oral-col, --change-od-col, or --current-oral-col-json. "
+            "Or use --grading-results for inference grading_results_{cvar}.xlsx files."
         )
 
     return plain_selected, json_selected
@@ -622,6 +861,26 @@ def validate_requested_columns(args: argparse.Namespace) -> tuple[Dict[str, list
 
 def main() -> None:
     args = parse_args()
+
+    # --- Additional convenience path (does not replace the column-driven mode) ---
+    if args.grading_results:
+        input_path = Path(args.input)
+        if not input_path.is_file():
+            raise FileNotFoundError(f"Input not found: {input_path}")
+        output_path = Path(args.output) if args.output else None
+        run_grading_results_standardization(
+            input_path,
+            output_path=output_path,
+            sheet_name=args.sheet_name,
+            cvar=args.cvar,
+            acronym=args.acronym,
+            use_combined_wrapper=args.use_combined_wrapper,
+        )
+        return
+
+    if not args.output:
+        raise ValueError("--output is required unless --grading-results is set.")
+
     plain_selected, json_selected = validate_requested_columns(args)
 
     input_path = Path(args.input)

@@ -1,16 +1,14 @@
-"""
-Single unified extractor driven entirely by cvar.
+"""Parse model JSON responses and map cvars to ground-truth columns.
 
-Lifted from notebook Cell 24; filtered to the four staged meds cvars.
+Driven entirely by cvar registries (``CONFIG_TO_COLUMN``, ``CVAR_OUTPUT_KEYS``).
 """
 
 from __future__ import annotations
 
 import json
 import re
-from typing import Any
 
-# -- DataFrame ground-truth columns (four cvars only) -------------------------
+# DataFrame ground-truth columns for each staged cvar
 CONFIG_TO_COLUMN: dict[str, list[str] | str] = {
     "oral_meds_staged": "Oral Meds",
     "oral_meds_change_staged": "Change in Oral Meds",
@@ -24,9 +22,6 @@ CVAR_OUTPUT_KEYS: dict[str, list[str]] = {
     "oral_meds_staged": ["Oral"],
     "oral_meds_change_staged": ["Oral"],
 }
-
-# No normalization maps needed for the four staged meds cvars.
-NORMALIZATION_MAPS: dict[str, dict[str, str]] = {}
 
 
 def is_bilateral(cvar: str) -> bool:
@@ -98,11 +93,6 @@ def extract_json_content(text: str, cvar: str) -> tuple[dict, bool]:
 
     _log_extraction_failure(text)
     return failed.copy(), False
-
-
-def normalize_value(value: Any, cvar: str | None = None) -> Any:
-    """Normalise a label value using the map for cvar (no-op for staged meds)."""
-    return NORMALIZATION_MAPS.get(cvar or "", {}).get(str(value).lower(), value)
 
 
 def join_fields(*values: str | None) -> str | None:

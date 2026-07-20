@@ -1,4 +1,4 @@
-# parser.py
+"""Parse free-text medication and medication-change lists into structured items."""
 
 import re
 from typing import List

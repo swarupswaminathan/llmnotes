@@ -10,7 +10,7 @@ from models.base import BaseAdapter
 
 
 class GptAdapter(BaseAdapter):
-    """GPT Responses API path (Cell 20), with stage schemas from task config."""
+    """GPT Responses API path, with stage schemas from task config."""
 
     def generate(
         self,

@@ -7,7 +7,7 @@ from typing import Any
 
 from openai import APIStatusError
 
-from config import SERVER_ERROR_CODES, RunContext, ServerFailureError
+from config import SERVER_ERROR_CODES, ServerFailureError
 from models.base import BaseAdapter
 
 
@@ -120,7 +120,6 @@ class OpenAICompatibleAdapter(BaseAdapter):
         }
         style = self.spec.response_format_style
         if style == "json_object":
-            # Match notebook DeepSeek/Qwen cells (nested json_object wrapper).
             return {
                 "type": "json_object",
                 "json_object": {

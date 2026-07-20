@@ -1,201 +1,173 @@
-# SLM\_SWARUP
+# SLM_SWARUP
 
-This repository contains a framework for experimenting with small language models (SLMs) applied to electronic health records (EHR) classification and labeling tasks.
-
-It was adapted from the original [slm\_ehr](https://github.com/bpei-vip/slm_ehr) repository.
-
----
-
-## Staged meds inference (CLI)
-
-Config-driven replacement for the duplicated staged-meds cells in
-`scripts/gemma_refactored copy 2.ipynb`. Only these `cvar`s are supported:
-`top_meds_staged`, `top_meds_change_staged`, `oral_meds_staged`,
-`oral_meds_change_staged`.
-
-```bash
-cp .env.example .env   # set AZURE_API_KEY / QWEN_API_KEY / etc.
-python main.py --model_name qwen --cvar top_meds_staged --tok_num 750 --reasoning_effort none
-```
-
-Outputs go to `final_results/{cvar}/{model}/{reasoning_effort}/{tok_num}_{timestamp}/`
-(same shape as the notebook). See [INFERENCE.md](INFERENCE.md) for package layout
-and how to add a model or staged prompt.
+Framework for running small/large language models on EHR clinical notes —
+focused on **staged glaucoma medication extraction** (topical and oral, current
+and change), then standardizing labels and evaluating against adjudicated gold.
 
 ---
 
-## 📂 Project Structure
+## Pipeline overview
 
+```text
+1. Inference     python main.py ...
+                 → results/{cvar}/{model}/{effort}/{tok_num}_{ts}/grading_results_{cvar}.xlsx
+
+2. Standardize   python med_standardization/run.py --grading-results --input <xlsx>
+                 → grading_results_{acronym}_standardized.xlsx  (same directory)
+
+3. Evaluate      python evaluate.py --input <standardized.xlsx>
+                 → {acronym}_results.txt
 ```
-SLM_SWARUP/
-├── __pycache__/
-├── .venv/                   # Python virtual environment
-├── labels/                  # Ground-truth labels for evaluation
-├── prompts/                 # Prompt templates for inference
-├── results/                 # Output results from inference runs
-├── .gitignore
-├── .python-version
-├── config.py                # Configuration for running experiments
-├── gemma.ipynb              # Notebook for running Gemma LLM inference
-├── git_login.txt            # Git login info (personal use, ignore for public deployment)
-├── metrics.ipynb            # Notebook for calculating evaluation metrics
-├── pyproject.toml
+
+Supported staged `cvar`s:
+
+| cvar | Acronym | Bilateral | Description |
+|------|---------|-----------|-------------|
+| `top_meds_staged` | tms | yes (OD/OS) | Current topical meds |
+| `top_meds_change_staged` | tmcs | yes (OD/OS) | Topical med changes |
+| `oral_meds_staged` | oms | no | Current oral meds |
+| `oral_meds_change_staged` | omcs | no | Oral med changes |
+
+---
+
+## Project structure
+
+```text
+llmnotes/
+├── main.py                 # Inference CLI
+├── evaluate.py             # Evaluation CLI
+├── config.py               # Env loading, model registry, RunContext
+├── configs/
+│   └── prompt_config.py    # Prompt template source of truth
+├── models/                 # Provider adapters (GPT, Claude, OpenAI-compatible, Qwen)
+├── prompts/
+│   └── registry.py         # cvar → PromptConfig (schemas, keys, columns)
+├── extraction/
+│   └── extractor.py        # Parse model JSON; cvar → target columns
+├── tasks/
+│   ├── staged.py           # Label → validate → revise for one note
+│   └── runner.py           # Grading-set loop
+├── output/
+│   └── results_writer.py   # Xlsx, stats, failure logs
+├── evaluation/             # Metrics vs adjudicated gold
+├── med_standardization/    # Free-text med label normalizer (+ Excel runner)
+├── data/                   # Input xlsx (grading, few-shot, adjudicated)
+├── results/                # Inference outputs (default RESULTS_ROOT)
+├── Dockerfile
+├── pyproject.toml / uv.lock
+├── .env.example
 ├── README.md
-├── requirements.txt         # Python dependencies
-└── uv.lock                  # Lockfile for Python environment reproducibility
+└── INFERENCE.md            # Inference package details (models, prompts)
 ```
+
+See [INFERENCE.md](INFERENCE.md) for model/prompt extension guides, and
+[med_standardization/README.md](med_standardization/README.md) for the
+standardizer API.
 
 ---
 
-## 🛠️ Setup Instructions
+## Setup
 
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/bpei-vip/slm_ehr.git
-cd slm_ehr
-```
-
-Or clone your own fork (if working on SLM\_SWARUP locally).
-
----
-
-### 2. Set up Python Environment (Recommended: Python 3.10+)
-
-If using `uv`:
+Requires **Python 3.11+**.
 
 ```bash
-uv pip install -r requirements.txt
-```
+# Clone and enter the repo
+cd llmnotes   # or your checkout path
 
-Or with pip:
+# Install with uv (recommended)
+uv sync
 
-```bash
+# Or with pip
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -e .
 ```
 
----
-
-### 3. Configure Your OpenAI / LLM Provider API Keys
-
-For OpenAI API:
+Copy and fill secrets:
 
 ```bash
-export OPENAI_API_KEY=your_api_key
+cp .env.example .env
+# Set AZURE_API_KEY, QWEN_API_KEY, endpoints, etc.
 ```
 
-For Hugging Face models like Gemma (locally or via API), authenticate using your Hugging Face token.
+Optional path overrides (also in `.env`):
+
+- `GRADING_XLSX`, `FEWSHOT_XLSX`, `ADJUDICATED_XLSX`, `RESULTS_ROOT`
+
+Place Excel inputs under `data/` (or point the env vars at your paths).
 
 ---
 
-## ✅ Running Inference
+## Inference
 
-**Main Notebook for Inference:**
+```bash
+python main.py \
+  --model_name qwen \
+  --cvar top_meds_staged \
+  --tok_num 750 \
+  --reasoning_effort none
+```
 
-* `gemma.ipynb`
+Registered model aliases (see `config.py`): `gpt`, `claude`, `deepseek`,
+`grok_n`, `qwen`.
 
-This notebook runs prompts from the `/prompts` folder on your chosen SLM (like Gemma, GPT, etc.), using text data from your `/labels` folder or external source.
+Outputs land under:
 
-**What it does:**
+```text
+results/{cvar}/{deployment_model}/{reasoning_effort}/{tok_num}_{mm-dd_HH:MM}/
+```
 
-* Loads prompts from config.
-* Calls the LLM with each prompt.
-* Saves the LLM-generated responses to `/results/`.
+Artifacts include `grading_results_{cvar}.xlsx`, `prompt_snapshot.txt`,
+`params_log.json`, `response_log.txt`, `stats.txt`, and failure trackers.
 
----
-
-## ✅ Running Evaluation Metrics
-
-**Metrics Notebook:**
-
-* `metrics.ipynb`
-
-What it calculates:
-
-* Accuracy
-* Sensitivity
-* Specificity
-* Confidence intervals
-* Per-class performance
-* Confusion matrix
-
-It compares the LLM output (`/results/`) with ground truth (`/labels/`).
+Full details: [INFERENCE.md](INFERENCE.md).
 
 ---
 
-## ✅ Configuration
+## Standardization
 
-The `config.py` file stores:
+Bridge inference outputs to evaluation column names:
 
-* Prompt file locations
-* Model configurations
-* System prompts
-* Class labels for each task
+```bash
+python med_standardization/run.py \
+  --grading-results \
+  --input results/top_meds_staged/.../grading_results_top_meds_staged.xlsx
+```
 
-You can extend it as needed.
-
----
-
-## 📊 Tasks Supported
-
-* Disease classification (e.g., Glaucoma staging)
-* Multi-label extraction from clinical notes
-* Eye-specific diagnosis labeling (OD / OS split)
+Writes `grading_results_{acronym}_standardized.xlsx` beside the input. For
+general Excel column mapping (non-grading mode), see
+[med_standardization/README.md](med_standardization/README.md).
 
 ---
 
-## ✅ Prompts
+## Evaluation
 
-All prompt templates are inside `/prompts/`.
+```bash
+python evaluate.py \
+  --input path/to/grading_results_tms_standardized.xlsx \
+  --adjudicated data/adjudicated_meds_last_final_standardized.xlsx
+```
 
-Each `.txt` file contains instructions given to the LLM (like "Summarize disease severity", "Extract ICD codes", etc.).
-
----
-
-## 📈 Labels & Results
-
-| Folder      | Purpose                   |
-| ----------- | ------------------------- |
-| `/labels/`  | Ground truth annotations  |
-| `/results/` | LLM-generated predictions |
+`--cvar` / `--acronym` are optional when the filename is a known standardized
+basename. Writes `{acronym}_results.txt` (exact match, Jaccard, Gwet AC1, etc.)
+beside the input (override with `--output`).
 
 ---
 
-## ✅ Dependencies
+## Docker
 
-Core Python packages:
+```bash
+docker build -t slm-swarup .
+docker run --env-file .env slm-swarup python main.py --help
+```
 
-* `transformers`
-* `openai`
-* `pandas`
-* `numpy`
-* `scikit-learn`
-* `matplotlib`
-* `statsmodels`
-* `tqdm`
-
-Full list: see `requirements.txt`.
+Secrets are injected at runtime via `--env-file` or `-e`; they are not baked
+into the image.
 
 ---
 
-## ✏️ Example Usage Flow
+## Dependencies
 
-1. **Generate Predictions:**
-
-Run `gemma.ipynb`.
-
-2. **Evaluate Metrics:**
-
-Run `metrics.ipynb`.
-
-3. **Tune Prompts:**
-
-Edit files inside `/prompts/` or modify config.py.
-
----
-
-## ✅ Future Work
-* Fine-tuning small models
----
+Declared in `pyproject.toml` / `uv.lock`. Core runtime packages include
+`openai`, `anthropic`, `pandas`, `openpyxl`, `numpy`, `tqdm`, `rapidfuzz`,
+`scipy`, `scikit-learn`, `statsmodels`.

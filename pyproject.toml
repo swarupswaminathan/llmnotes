@@ -5,31 +5,20 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "accelerate==1.4.0",
-    "bitsandbytes==0.45.3",
-    "datasets==3.3.2",
-    "evaluate==0.4.3",
-    "flash-attn>=2.8.0.post2",
-    "icecream>=2.1.5",
-    "imblearn>=0.0",
-    "ipykernel>=6.29.5",
-    "matplotlib>=3.10.6",
-    "ninja>=1.11.1.4",
-    "openpyxl>=3.1.5",
-    "packaging>=25.0",
+    "openai>=1.0.0",
+    "anthropic>=0.40.0",
     "pandas>=2.3.0",
-    "peft==0.14.0",
-    "protobuf>=6.31.1",
-    "scikit-learn>=1.7.0",
-    "seaborn>=0.13.2",
-    "sentencepiece>=0.2.0",
-    "streamlit>=1.47.1",
-    "tensorboard>=2.19.0",
-    "torch>=2.7.1",
+    "openpyxl>=3.1.5",
+    "numpy>=2.0.0",
     "tqdm>=4.67.1",
-    "transformers>=4.53.0",
-    "trl==0.15.2",
-    "xgboost>=3.0.4",
+    "rapidfuzz>=3.0.0",
+    "requests>=2.31.0",
+    "scipy>=1.11.0",
+    "scikit-learn>=1.7.0",
+    "statsmodels>=0.14.0",
 ]
-[tool.uv.extra-build-dependencies]
-flash-attn = ["torch"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+]

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""CLI entry: resolve (adapter, task, params) → run staged grading loop."""
+"""CLI entry for staged medication inference.
+
+Resolves model adapter + prompt config from registries, then runs the grading
+loop over clinical notes and writes artifacts under results/.
+"""
 
 from __future__ import annotations
 
@@ -14,7 +18,7 @@ _REPO_ROOT = Path(__file__).resolve().parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from config import (  # noqa: E402
+from config import (  
     DEFAULT_FEWSHOT_XLSX,
     DEFAULT_GRADING_XLSX,
     RESULTS_ROOT,
@@ -22,9 +26,9 @@ from config import (  # noqa: E402
     SUPPORTED_CVARS,
     get_model_spec,
 )
-from models.registry import create_adapter, list_models  # noqa: E402
-from prompts.registry import get_prompt_config, list_cvars  # noqa: E402
-from tasks.runner import load_grading_df, run_grading_loop  # noqa: E402
+from models.registry import create_adapter, list_models  
+from prompts.registry import get_prompt_config, list_cvars  
+from tasks.runner import load_grading_df, run_grading_loop  
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -62,7 +66,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--results_root",
         default=str(RESULTS_ROOT),
-        help="Root for output dirs (default: final_results/).",
+        help="Root for output dirs (default: results/).",
     )
     return parser.parse_args(argv)
 
@@ -70,7 +74,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def make_results_dir(
     results_root: Path, cvar: str, model_name: str, reasoning_effort: str, tok_num: int
 ) -> Path:
-    """Match notebook Cell 8 path scheme including {cvar}."""
+    """Create ``results/{cvar}/{model}/{effort}/{tok_num}_{timestamp}/``."""
     ts = datetime.now().strftime("%m-%d_%H:%M")
     results_dir = results_root / cvar / model_name / reasoning_effort / f"{tok_num}_{ts}"
     results_dir.mkdir(parents=True, exist_ok=True)
@@ -94,7 +98,6 @@ def main(argv: list[str] | None = None) -> int:
         args.tok_num,
     )
 
-    # prompt_snapshot.txt — Cell 8
     with open(results_dir / "prompt_snapshot.txt", "w") as f:
         json.dump(task.prompts, f, indent=2)
 

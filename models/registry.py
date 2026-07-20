@@ -1,4 +1,4 @@
-"""Client factory and adapter registry (lift of notebook Cells 3–5)."""
+"""Client factory and adapter registry."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ _ADAPTER_CLASSES: dict[str, type[BaseAdapter]] = {
 
 
 def create_client(spec: ModelSpec, api_key: str | None = None) -> Any:
-    """Create the SDK client for a model spec (Cell 4 routing)."""
+    """Create the SDK client for a model spec."""
     key = api_key or resolve_api_key(spec)
     endpoint = resolve_endpoint(spec)
     provider_type = spec.provider_type
@@ -52,9 +52,9 @@ def create_adapter(alias: str, ctx: RunContext) -> BaseAdapter:
     """Resolve alias → ModelSpec → client → adapter instance."""
     spec = get_model_spec(alias)
     if ctx.reasoning_effort not in spec.reasoning_effort:
-        print(
-            f"Warning: reasoning_effort={ctx.reasoning_effort!r} not in "
-            f"{spec.alias} allowed set {spec.reasoning_effort}; proceeding anyway."
+        raise ValueError(
+            f"reasoning_effort={ctx.reasoning_effort!r} not allowed for "
+            f"'{spec.alias}'. Allowed: {spec.reasoning_effort}"
         )
     client = create_client(spec)
     adapter_cls = _ADAPTER_CLASSES[spec.adapter]

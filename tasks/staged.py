@@ -1,4 +1,8 @@
-"""One generalized staged-meds routine parameterized by PromptConfig."""
+"""Three-stage medication extraction (label → validate → revise) for one note.
+
+Parameterized by ``PromptConfig`` so topical/oral and current/change share one
+code path without cvar branching in the runner.
+"""
 
 from __future__ import annotations
 
@@ -26,8 +30,7 @@ def _format_citations(task: PromptConfig, parsed: dict) -> str | None:
 def _format_validation_reasons(task: PromptConfig, parsed: dict) -> str | None:
     parts = []
     for label_key, json_key in task.validation_reason_keys.items():
-        # Oral uses "Oral Reason:"; bilateral uses "OD Reason:"
-        suffix = "Reason" if task.bilateral else "Reason"
+        suffix = "Reason"
         parts.append(f"{label_key} {suffix}: {parsed.get(json_key, '')}")
     if task.bilateral:
         return join_fields(*parts)

@@ -1,8 +1,4 @@
-'''
-Medication standardization script for current medication list processing.
-Test run this script in med_standardization directory with: 
-python -m src.current_med_standardization
-'''
+"""Standardize free-text current medication lists into a consistent format."""
 
 import json
 from dataclasses import asdict
@@ -13,6 +9,7 @@ from .utils import sort_key
 
 
 def standardize_medication_list(med_list: str, med_list_type: str) -> Dict[str, Any]:
+    """Normalize a current-med string (``med_list_type``: OD / OS / oral)."""
     parsed = parse_medication_list(med_list, med_list_type)
 
     if len(parsed) == 1 and parsed[0].drug_name in {"None", "Unspecified"}:

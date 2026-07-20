@@ -1,8 +1,4 @@
-'''
-Unified interface for standardizing both current medication lists and medication change lists.
-Test run this script in med_standardization directory with: 
-python -m src.combined_med_standardization
-'''
+"""Route current vs change medication strings to the appropriate standardizer."""
 
 from typing import Dict, Any
 

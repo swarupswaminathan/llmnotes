@@ -1,4 +1,4 @@
-"""Entry that runs the staged path for the selected cvar over the grading set."""
+"""Grading-set loop: load notes, run staged extraction, write per-note results."""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ from config import RunContext, ServerFailureError
 from extraction.extractor import (
     extract_json_content,
     is_bilateral,
-    normalize_value,
     output_keys_for,
     target_columns_for,
 )
@@ -22,7 +21,7 @@ from tasks.staged import run_staged_meds
 
 
 def load_grading_df(grading_xlsx: str | Path, fewshot_xlsx: str | Path) -> pd.DataFrame:
-    """Load and filter grading notes (Cell 6)."""
+    """Load grading notes, drop non-glaucoma rows, merge UsedinExamples flags."""
     grading_df = pd.read_excel(grading_xlsx)
     few_shot_df = pd.read_excel(fewshot_xlsx)
     grading_df = grading_df[grading_df["Glaucoma OD"].notna()]
@@ -41,7 +40,7 @@ def run_grading_loop(
     ctx: RunContext,
     grading_df: pd.DataFrame,
 ) -> None:
-    """Main loop lifted from Cell 28 (staged path only)."""
+    """Iterate notes, call staged meds, score matches, and persist artifacts."""
     writer = ResultsWriter(ctx)
     scores: list = []
     max_count = 0
@@ -49,10 +48,6 @@ def run_grading_loop(
     acc = 0.0
     token_drought_acc = 1.0
     prompt_drought_acc = 1.0
-    target_columns = task.target_columns
-    if isinstance(target_columns, str):
-        # Cell 28 unary path indexes with the string column name directly
-        pass
 
     for idx, (note, contact_date, used_in_examples) in enumerate(
         tqdm(
@@ -67,7 +62,7 @@ def run_grading_loop(
     ):
         verbose = True
 
-        if used_in_examples != "Val":  # noqa: E712 — match notebook
+        if used_in_examples != False:  
             grading_df.loc[grading_df["Combined_NOTE_TEXT"] == note, "AI_Diagnosis"] = None
             continue
 
@@ -120,12 +115,6 @@ def run_grading_loop(
             target_os = grading_df.loc[grading_df["Combined_NOTE_TEXT"] == note, cols[1]].values[0]
             target_od = "None" if pd.isna(target_od) else target_od
             target_os = "None" if pd.isna(target_os) else target_os
-            og_od, og_os = target_od, target_os
-            target_od = normalize_value(target_od, ctx.cvar)
-            target_os = normalize_value(target_os, ctx.cvar)
-            if og_od != target_od or og_os != target_os:
-                print(f"Normalized - Original OD: {og_od}, Original OS: {og_os}")
-
             match_od = 1 if extracted.get("OD") == target_od else 0
             match_os = 1 if extracted.get("OS") == target_os else 0
             scores.append([match_od, match_os])
@@ -134,7 +123,6 @@ def run_grading_loop(
             cols = target_columns_for(ctx.cvar)
             target = grading_df.loc[grading_df["Combined_NOTE_TEXT"] == note, cols[0]].values[0]
             target = "None" if pd.isna(target) else target
-            target = normalize_value(target, ctx.cvar)
             target_str = str(target).lower() if target is not None else ""
 
             extracted, _ = extract_json_content(ai_diag, ctx.cvar)

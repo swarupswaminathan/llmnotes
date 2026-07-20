@@ -1,4 +1,4 @@
-# models.py
+"""Data models for parsed current and change medication items."""
 
 from dataclasses import dataclass
 from typing import Optional

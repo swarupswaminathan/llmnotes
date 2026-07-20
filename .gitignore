@@ -1,7 +1,6 @@
-test_results/
-val_results/
 results/
 *.xlsx
 .env
-reports/
 data/
+__pycache__/
+*.pyc

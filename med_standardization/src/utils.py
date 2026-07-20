@@ -1,4 +1,4 @@
-# utils.py
+"""Text normalization and field-extraction helpers for medication parsing."""
 
 import re
 from typing import Tuple, Optional, List

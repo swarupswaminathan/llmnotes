@@ -9,7 +9,7 @@ from config import RunContext, ServerFailureError
 
 
 class BaseAdapter(ABC):
-    """Common interface: generate(prompt/note) -> response dict matching notebook shape."""
+    """Common interface: generate(prompt/note) -> response dict."""
 
     def __init__(self, client: Any, ctx: RunContext, spec: Any):
         self.client = client

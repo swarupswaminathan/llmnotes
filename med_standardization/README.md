@@ -271,6 +271,29 @@ python run.py \
   --change-oral-col "Change in Oral Meds"
 ```
 
+## Example 5: grading_results convenience mode (inference → evaluation)
+
+After inference writes `grading_results_{cvar}.xlsx`, standardize predictions for
+the evaluation pipeline with a single flag (no column arguments):
+
+```bash
+python run.py \
+  --grading-results \
+  --input ../results/oral_meds_staged/gpt-5.2/none/750_xx/grading_results_oral_meds_staged.xlsx
+```
+
+This writes beside the input:
+
+```text
+grading_results_oms_standardized.xlsx
+```
+
+Acronyms match `evaluation/column_map.py`: `tms` / `tmcs` / `oms` / `omcs`.
+Only the `AI_Diagnosis` JSON column is standardized; gold columns are merged
+later by `evaluate.py` from the adjudicated workbook.
+
+Optional overrides: `--cvar`, `--acronym`, `--output`.
+
 ## Output columns created by `run.py`
 
 For each input column, the script appends four output columns:

@@ -1,9 +1,8 @@
-# constants.py
-'''
-Constants and controlled vocabularies for medication standardization.
-This includes canonical drug names, synonym mappings, frequency normalization.
-Customize to your institution's medication naming conventions and commonly used abbreviations.
-'''
+"""Constants and controlled vocabularies for medication standardization.
+
+Canonical drug names, synonym maps, and frequency normalization. Customize to
+your institution's naming conventions and common abbreviations.
+"""
 
 # ============================================================
 # Topical-med controlled vocabulary

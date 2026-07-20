@@ -1,4 +1,4 @@
-# matching.py
+"""Fuzzy drug-name matching against canonical vocabularies."""
 
 import re
 from typing import Tuple, Optional, Dict

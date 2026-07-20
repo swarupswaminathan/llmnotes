@@ -52,9 +52,6 @@ class PromptConfig:
 def _str_prop() -> dict[str, str]:
     return {"type": "string"}
 
-
-# -- Schemas lifted from provider cells (task axis, not model axis) ----------
-
 _TOP_MEDS_EXTRACT = StageSchema(
     properties={
         "OD": _str_prop(),
@@ -117,7 +114,7 @@ def _build_registry() -> dict[str, PromptConfig]:
             citation_label="Citation",
             reasoning_json_key="reasoning",
             validation_reason_keys={"OD": "OD_reason", "OS": "OS_reason"},
-            log_idx_limit=1260,
+            log_idx_limit=None,
             t2_includes_reasoning=True,
         ),
         "top_meds_change_staged": PromptConfig(
@@ -136,7 +133,7 @@ def _build_registry() -> dict[str, PromptConfig]:
             citation_label="Citation and Reasoning",
             reasoning_json_key=None,
             validation_reason_keys={"OD": "OD_reason", "OS": "OS_reason"},
-            log_idx_limit=900,
+            log_idx_limit=None,
             t2_includes_reasoning=False,
         ),
         "oral_meds_staged": PromptConfig(

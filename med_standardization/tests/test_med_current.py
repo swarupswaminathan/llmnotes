@@ -4,8 +4,6 @@ To run these tests, execute the following command from the root of the repositor
 python -m pytest tests/test_med_current.py
 """
 
-from unittest import result
-
 import pytest
 import logging
 import json

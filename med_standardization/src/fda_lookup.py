@@ -1,4 +1,4 @@
-# fda_lookup.py
+"""Optional openFDA name lookup for unrecognized drug tokens."""
 
 import requests
 

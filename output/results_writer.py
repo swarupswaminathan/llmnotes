@@ -1,4 +1,4 @@
-"""Write result artifacts under results_dir."""
+"""Persist grading xlsx, stats, failure logs, and trackers under results_dir."""
 
 from __future__ import annotations
 
@@ -10,6 +10,8 @@ from config import RunContext
 
 
 class ResultsWriter:
+    """Filesystem writer for a single inference run's artifacts."""
+
     def __init__(self, ctx: RunContext):
         self.ctx = ctx
         self.results_dir = Path(ctx.results_dir)

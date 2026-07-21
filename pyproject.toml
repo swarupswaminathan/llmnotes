@@ -1,7 +1,7 @@
 [project]
-name = "slm-swarup"
+name = "gllaucomed"
 version = "0.1.0"
-description = "Add your description here"
+description = "GLLaucoMed — LLM pipeline for glaucoma medication extraction from clinical notes"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

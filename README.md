@@ -1,6 +1,6 @@
 # GLLaucoMed
 
-Authored by Nicholas Solages, Bascom Palmer Eye Institute 
+Authored by Nicholas Solages, McKnight Vision Research Center - Bascom Palmer Eye Institute
 
 This repository is a framework for running large language models for extraction of medication information
 from free-text glaucoma clinical notes. The pipeline addresses four tasks — current topical medications,
@@ -160,8 +160,8 @@ beside the input (override with `--output`).
 ## Docker
 
 ```bash
-docker build -t slm-swarup .
-docker run --env-file .env slm-swarup python main.py --help
+docker build -t gllaucomed .
+docker run --env-file .env gllaucomed python main.py --help
 ```
 
 Secrets are injected at runtime via `--env-file` or `-e`; they are not baked

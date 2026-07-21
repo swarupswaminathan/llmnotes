@@ -2,7 +2,7 @@
 
 Pipeline position (do not re-run inference or standardization here):
   Inference → grading_results_{cvar}.xlsx
-  → med_standardization → grading_results_{acronym}_standardized.xlsx
+  → standardization → grading_results_{acronym}_standardized.xlsx
   → this evaluation → {acronym}_results.txt
 """
 
@@ -73,7 +73,7 @@ def run_evaluation(
 
     with tee_stdout(output_path):
         print(f"Input: {input_path}")
-        print(f"Adjudicated gold: {adjudicated_path}")
+        print(f"Adjudicated labels: {adjudicated_path}")
         print(f"cvar={spec.cvar} acronym={spec.acronym}")
         print(f"is_topical={spec.is_topical} has_change={spec.has_change}")
         print(f"column map key: {spec.map_key}")

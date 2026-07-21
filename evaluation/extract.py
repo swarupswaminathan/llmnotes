@@ -11,7 +11,7 @@ from typing import Any
 
 import pandas as pd
 
-from med_standardization.src.current_med_standardization import (
+from standardization.src.current_med_standardization import (
     standardize_medication_list,
 )
 

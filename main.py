@@ -33,7 +33,7 @@ from tasks.runner import load_grading_df, run_grading_loop
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run staged EHR/SLM meds inference (config-driven)."
+        description="Run staged EHR meds inference (config-driven)."
     )
     parser.add_argument(
         "--model_name",

@@ -4,3 +4,5 @@ results/
 data/
 __pycache__/
 *.pyc
+.cursorignore
+.DS_Store

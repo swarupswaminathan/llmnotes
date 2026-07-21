@@ -14,7 +14,7 @@ It includes:
 ## Repository structure
 
 ```text
-med_standardization/
+standardization/
 ├── src/
 │   ├── current_med_standardization.py
 │   ├── change_med_standardization.py

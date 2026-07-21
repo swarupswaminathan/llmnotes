@@ -1,4 +1,4 @@
-"""Oral (note-level) medication evaluation against adjudicated gold.
+"""Oral (note-level) medication evaluation against adjudicated labels.
 
 Drops rows with missing labels flagged for failed_match, extracts drugs /
 frequencies / change terms, then prints agreement scenarios (no AUPRC).

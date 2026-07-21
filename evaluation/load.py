@@ -1,4 +1,4 @@
-"""Load grading results, merge with adjudicated gold, and apply the eval filter.
+"""Load grading results, merge with adjudicated labels, and apply the eval filter.
 
 Branches on topical vs oral column layouts from ``EvalSpec``. Filters to rows
 where ``UsedinExamples == False`` (held-out set; distinct from inference's

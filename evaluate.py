@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """CLI entry for medication extraction evaluation.
 
-Compares standardized grading_results against adjudicated gold and writes a
+Compares standardized grading_results against adjudicated labels and writes a
 text report (exact match, Jaccard, Gwet AC1, etc.).
 
 Example:
@@ -32,7 +32,7 @@ DEFAULT_ADJUDICATED = (
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Evaluate standardized grading_results against adjudicated gold."
+            "Evaluate standardized grading_results against adjudicated labels."
         )
     )
     parser.add_argument(
@@ -44,7 +44,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--adjudicated",
         default=str(DEFAULT_ADJUDICATED),
         help=(
-            "Path to adjudicated gold xlsx "
+            "Path to adjudicated labels xlsx "
             "(default: data/adjudicated_meds_last_final_standardized.xlsx)"
         ),
     )
@@ -81,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     adjudicated = Path(args.adjudicated)
     if not adjudicated.is_file():
-        print(f"Adjudicated gold not found: {adjudicated}", file=sys.stderr)
+        print(f"Adjudicated labels not found: {adjudicated}", file=sys.stderr)
         return 2
 
     out = run_evaluation(

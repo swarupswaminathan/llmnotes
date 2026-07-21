@@ -1,7 +1,7 @@
 """Column maps and cvar/acronym resolution for evaluation inputs.
 
 Maps standardized grading filenames to ordered column lists used when merging
-predictions with adjudicated gold. Column name strings must match the
+predictions with adjudicated labels. Column name strings must match the
 standardization output exactly.
 """
 

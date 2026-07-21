@@ -103,7 +103,7 @@ No changes to `tasks/staged.py` or `main.py` dispatch logic should be required.
 After inference, standardize then evaluate (see [README.md](README.md)):
 
 ```bash
-python med_standardization/run.py --grading-results --input <grading_results_{cvar}.xlsx>
+python standardization/run.py --grading-results --input <grading_results_{cvar}.xlsx>
 python evaluate.py --input <grading_results_{acronym}_standardized.xlsx>
 ```
 

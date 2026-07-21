@@ -1,8 +1,11 @@
-# SLM_SWARUP
+# GLLaucoMed
 
-Framework for running small/large language models on EHR clinical notes —
-focused on **staged glaucoma medication extraction** (topical and oral, current
-and change), then standardizing labels and evaluating against adjudicated gold.
+Authored by Nicholas Solages, Bascom Palmer Eye Institute 
+
+This repository is a framework for running large language models for extraction of medication information
+from free-text glaucoma clinical notes. The pipeline addresses four tasks — current topical medications,
+change in topical medications, current oral medications, and changes in oral medications.
+The pipeline standardizes labels and model outputs and subsequently evaluates model performance.
 
 ---
 
@@ -12,7 +15,7 @@ and change), then standardizing labels and evaluating against adjudicated gold.
 1. Inference     python main.py ...
                  → results/{cvar}/{model}/{effort}/{tok_num}_{ts}/grading_results_{cvar}.xlsx
 
-2. Standardize   python med_standardization/run.py --grading-results --input <xlsx>
+2. Standardize   python standardization/run.py --grading-results --input <xlsx>
                  → grading_results_{acronym}_standardized.xlsx  (same directory)
 
 3. Evaluate      python evaluate.py --input <standardized.xlsx>
@@ -49,8 +52,8 @@ llmnotes/
 │   └── runner.py           # Grading-set loop
 ├── output/
 │   └── results_writer.py   # Xlsx, stats, failure logs
-├── evaluation/             # Metrics vs adjudicated gold
-├── med_standardization/    # Free-text med label normalizer (+ Excel runner)
+├── evaluation/             # Metrics vs adjudicated labels
+├── standardization/    # Standardizer CLI
 ├── data/                   # Input xlsx (grading, few-shot, adjudicated)
 ├── results/                # Inference outputs (default RESULTS_ROOT)
 ├── Dockerfile
@@ -61,7 +64,7 @@ llmnotes/
 ```
 
 See [INFERENCE.md](INFERENCE.md) for model/prompt extension guides, and
-[med_standardization/README.md](med_standardization/README.md) for the
+[standardization/README.md](standardization/README.md) for the
 standardizer API.
 
 ---
@@ -129,14 +132,14 @@ Full details: [INFERENCE.md](INFERENCE.md).
 Bridge inference outputs to evaluation column names:
 
 ```bash
-python med_standardization/run.py \
+python standardization/run.py \
   --grading-results \
   --input results/top_meds_staged/.../grading_results_top_meds_staged.xlsx
 ```
 
 Writes `grading_results_{acronym}_standardized.xlsx` beside the input. For
 general Excel column mapping (non-grading mode), see
-[med_standardization/README.md](med_standardization/README.md).
+[standardization/README.md](standardization/README.md).
 
 ---
 
